@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECO 2D - Admin Control</title>
+    <style>
+        :root {
+            --primary: #1a2a6c;
+            --secondary: #b21f1f;
+            --success: #27ae60;
+            --light: #f4f7f6;
+        }
+
+        /* Login Box Styling */
+        #login-screen {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--primary); display: flex; justify-content: center; align-items: center;
+            z-index: 1000; color: white;
+        }
+        .login-card { background: white; padding: 30px; border-radius: 15px; color: #333; text-align: center; width: 85%; max-width: 350px; }
+        
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--light); margin: 0; padding: 10px; }
+        .admin-box { max-width: 1000px; margin: auto; background: white; padding: 20px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); display: none; }
+        
+        /* Mobile Responsive Grid */
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        .card { border: 1px solid #eee; padding: 15px; border-radius: 15px; background: #fff; }
+        
+        .input-group { margin-bottom: 12px; }
+        label { display: block; font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        
+        button { width: 100%; padding: 12px; background: var(--primary); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+        .btn-reset { background: var(--secondary); margin-bottom: 20px; }
+        
+        .weekly-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-top: 15px; }
+        .day-input { background: #f9f9f9; padding: 10px; border-radius: 10px; border: 1px solid #eee; text-align: center; }
+
+        .status-toast { position: fixed; bottom: 20px; right: 20px; background: var(--success); color: white; padding: 15px; border-radius: 10px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen">
+    <div class="login-card">
+        <h3>Admin Login</h3>
+        <p style="font-size: 12px; color: #666;">စနစ်ကို အသုံးပြုရန် Password ရိုက်ထည့်ပါ</p>
+        <input type="password" id="admin-pass" placeholder="Password..." style="margin-bottom: 15px;">
+        <button onclick="checkPass()">Login</button>
+        <p id="err" style="color: red; font-size: 12px; margin-top: 10px; display: none;">Password မှားနေပါတယ်!</p>
+    </div>
+</div>
+
+<div class="admin-box" id="admin-main">
+    <div style="text-align: center; border-bottom: 2px solid var(--primary); margin-bottom: 20px;">
+        <h2 style="color: var(--primary); margin-bottom: 10px;">ECO 2D ADMIN</h2>
+    </div>
+
+    <button class="btn-reset" onclick="controlLive('shuffling')">🔄 Reset Live Shuffling</button>
+
+    <div class="grid">
+        <div class="card">
+            <h3 style="color: var(--secondary); border-bottom: 1px solid #eee; padding-bottom: 5px;">Morning (12:01 Pm)</h3>
+            <div class="input-group"><label>Set</label><input type="text" id="m_set"></div>
+            <div class="input-group"><label>Value</label><input type="text" id="m_val"></div>
+            <div class="input-group"><label>2D Digit</label><input type="text" id="m_2d"></div>
+            <div class="input-group"><label>Tip (Green Text)</label><input type="text" id="m_tip"></div>
+            <button onclick="updateSession('morning')">Update Morning</button>
+        </div>
+
+        <div class="card">
+            <h3 style="color: var(--secondary); border-bottom: 1px solid #eee; padding-bottom: 5px;">Evening (04:30 Pm)</h3>
+            <div class="input-group"><label>Set</label><input type="text" id="e_set"></div>
+            <div class="input-group"><label>Value</label><input type="text" id="e_val"></div>
+            <div class="input-group"><label>2D Digit</label><input type="text" id="e_2d"></div>
+            <div class="input-group"><label>Tip (Green Text)</label><input type="text" id="e_tip"></div>
+            <button onclick="updateSession('evening')">Update Evening</button>
+        </div>
+    </div>
+
+    <div class="card" style="margin-top: 20px;">
+        <h3>Weekly History Management</h3>
+        <div id="weekly-inputs" class="weekly-grid"></div>
+        <button style="background: var(--success);" onclick="updateWeekly()">Save All Records</button>
+    </div>
+</div>
+
+<div id="toast" class="status-toast">✅ အောင်မြင်စွာ သိမ်းဆည်းပြီးပါပြီ!</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, update } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = { databaseURL: "https://database-15457-default-rtdb.firebaseio.com/" };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Password Logic
+    window.checkPass = function() {
+        const pass = document.getElementById('admin-pass').value;
+        if(pass === '113027') { // <--- ဤနေရာတွင် Password ပြောင်းပါ
+            document.getElementById('login-screen').style.display = 'none';
+            document.getElementById('admin-main').style.display = 'block';
+        } else {
+            document.getElementById('err').style.display = 'block';
+        }
+    }
+
+    const days = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+    const weeklyContainer = document.getElementById('weekly-inputs');
+    days.forEach(day => {
+        weeklyContainer.innerHTML += `
+            <div class="day-input">
+                <label style="color: var(--primary); text-transform: uppercase;">${day}</label>
+                <input type="text" id="${day}_m" placeholder="12:01" style="margin-bottom: 5px;">
+                <input type="text" id="${day}_e" placeholder="04:30">
+            </div>
+        `;
+    });
+
+    window.updateSession = function(session) {
+        const data = {};
+        if(session === 'morning') {
+            data.morning_set = document.getElementById('m_set').value;
+            data.morning_val = document.getElementById('m_val').value;
+            data.morning_2d = document.getElementById('m_2d').value;
+            data.morning_tip = document.getElementById('m_tip').value;
+            data.live_status = "fixed_m";
+        } else {
+            data.evening_set = document.getElementById('e_set').value;
+            data.evening_val = document.getElementById('e_val').value;
+            data.evening_2d = document.getElementById('e_2d').value;
+            data.evening_tip = document.getElementById('e_tip').value;
+            data.live_status = "fixed_e";
+        }
+        update(ref(db, '/'), data).then(showToast);
+    };
+
+    window.updateWeekly = function() {
+        const data = {};
+        days.forEach(day => {
+            data[`${day}_m`] = document.getElementById(`${day}_m`).value;
+            data[`${day}_e`] = document.getElementById(`${day}_e`).value;
+        });
+        update(ref(db, '/'), data).then(showToast);
+    };
+
+    window.controlLive = function(status) {
+        update(ref(db, '/'), { live_status: status }).then(showToast);
+    };
+
+    function showToast() {
+        const toast = document.getElementById('toast');
+        toast.style.display = 'block';
+        setTimeout(() => toast.style.display = 'none', 3000);
+    }
+</script>
+</body>
+</html>
