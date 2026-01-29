@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="my">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ECO 2D - Master Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background: #0f172a; color: white; font-family: sans-serif; }
+        .card { background: #1e293b; border-radius: 15px; padding: 20px; margin-bottom: 20px; border: 1px solid #334155; }
+        input, select { background: #0f172a; border: 1px solid #334155; color: white; padding: 10px; border-radius: 8px; width: 100%; margin-top: 5px; }
+        label { font-size: 12px; color: #94a3b8; font-weight: bold; text-transform: uppercase; }
+        .btn-update { background: #fbbf24; color: #020617; font-weight: bold; padding: 12px; border-radius: 8px; width: 100%; margin-top: 20px; cursor: pointer; }
+        .btn-update:hover { background: #f59e0b; }
+    </style>
+</head>
+<body class="p-5">
+
+<div id="login-box" class="max-w-md mx-auto mt-20 text-center">
+    <h1 class="text-2xl font-black text-amber-500 mb-5">ADMIN LOGIN</h1>
+    <input type="password" id="admin-pass" placeholder="Enter Admin Password">
+    <button onclick="checkPass()" class="btn-update">Login to Dashboard</button>
+</div>
+
+<div id="admin-content" class="max-w-2xl mx-auto hidden">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-xl font-black text-amber-500 italic">ECO 2D MASTER CONTROL</h1>
+        <button onclick="location.reload()" class="text-xs bg-rose-500/20 text-rose-500 px-3 py-1 rounded">Logout</button>
+    </div>
+
+    <div class="card">
+        <h2 class="text-sm font-bold mb-4 border-b border-slate-700 pb-2">LIVE CONTROL (ဂဏန်းထိန်းချုပ်မှု)</h2>
+        <div class="grid grid-cols-1 gap-4">
+            <div>
+                <label>Live Mode</label>
+                <select id="live_status">
+                    <option value="random">Random (ကျပန်းလှည့်မည်)</option>
+                    <option value="fixed_m">Fixed Morning (မနက်ရလဒ် ပိတ်မည်)</option>
+                    <option value="fixed_e">Fixed Evening (ညနေရလဒ် ပိတ်မည်)</option>
+                </select>
+            </div>
+            <div>
+                <label>Market Status (Open/Closed)</label>
+                <select id="market_status">
+                    <option value="Open">Market Open</option>
+                    <option value="Closed">Market Closed</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <div class="card border-l-4 border-blue-500">
+        <h2 class="text-blue-400 font-bold mb-4">MORNING RESULT (12:01 PM)</h2>
+        <div class="grid grid-cols-2 gap-3">
+            <div><label>SET</label><input type="text" id="morning_set"></div>
+            <div><label>VALUE</label><input type="text" id="morning_val"></div>
+            <div><label>2D Result</label><input type="text" id="morning_2d"></div>
+            <div><label>TIP (ဂဏန်းအချောင်း)</label><input type="text" id="morning_tip"></div>
+        </div>
+    </div>
+
+    <div class="card border-l-4 border-rose-500">
+        <h2 class="text-rose-400 font-bold mb-4">EVENING RESULT (04:30 PM)</h2>
+        <div class="grid grid-cols-2 gap-3">
+            <div><label>SET</label><input type="text" id="evening_set"></div>
+            <div><label>VALUE</label><input type="text" id="evening_val"></div>
+            <div><label>2D Result</label><input type="text" id="evening_2d"></div>
+            <div><label>TIP (ဂဏန်းအချောင်း)</label><input type="text" id="evening_tip"></div>
+        </div>
+    </div>
+
+    <div class="card">
+        <h2 class="text-amber-500 font-bold mb-4 italic">WEEKLY HISTORY (အပတ်စဉ်မှတ်တမ်း)</h2>
+        <div class="grid grid-cols-3 gap-2 text-center">
+            <label>Day</label><label>Morning</label><label>Evening</label>
+            <span>MON</span><input type="text" id="mon_m"><input type="text" id="mon_e">
+            <span>TUE</span><input type="text" id="tue_m"><input type="text" id="tue_e">
+            <span>WED</span><input type="text" id="wed_m"><input type="text" id="wed_e">
+            <span>THU</span><input type="text" id="thu_m"><input type="text" id="thu_e">
+            <span>FRI</span><input type="text" id="fri_m"><input type="text" id="fri_e">
+        </div>
+    </div>
+
+    <button id="update-btn" class="btn-update">SAVE ALL CHANGES (သိမ်းဆည်းမည်)</button>
+    <p id="msg" class="text-center mt-3 text-emerald-500 font-bold"></p>
+</div>
+
+<script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+    import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+    const firebaseConfig = { databaseURL: "https://database-15457-default-rtdb.firebaseio.com/" };
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Security check
+    window.checkPass = () => {
+        const pass = document.getElementById('admin-pass').value;
+        if(pass === "113027") { // ဒီနေရာမှာ Password ပြောင်းနိုင်ပါတယ်
+            document.getElementById('login-box').classList.add('hidden');
+            document.getElementById('admin-content').classList.remove('hidden');
+            loadData();
+        } else {
+            alert("Wrong Password!");
+        }
+    };
+
+    // Load existing data from Firebase
+    function loadData() {
+        onValue(ref(db, '/'), (snap) => {
+            const data = snap.val();
+            if(!data) return;
+            for (let key in data) {
+                if(document.getElementById(key)) {
+                    document.getElementById(key).value = data[key];
+                }
+            }
+        }, { onlyOnce: true });
+    }
+
+    // Update data to Firebase
+    document.getElementById('update-btn').onclick = () => {
+        const updates = {};
+        const inputs = document.querySelectorAll('input, select');
+        inputs.forEach(input => {
+            if(input.id !== 'admin-pass') {
+                updates[input.id] = input.value;
+            }
+        });
+
+        set(ref(db, '/'), updates)
+            .then(() => {
+                document.getElementById('msg').innerText = "Data Updated Successfully! ✅";
+                setTimeout(() => document.getElementById('msg').innerText = "", 3000);
+            })
+            .catch((err) => alert("Error: " + err));
+    };
+</script>
+</body>
+</html>
